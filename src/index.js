@@ -6,87 +6,71 @@ import { fetchCountries } from './js/fetchCountries';
 const DEBOUNCE_DELAY = 300;
 const MAX_COUNTRIES = 10;
 
-const refs = {
-  input: document.querySelector('#search-box'),
-  list: document.querySelector('.country-list'),
-  info: document.querySelector('.country-info'),
-};
+const searchBox = document.getElementById('search-box');
+const countryList = document.querySelector('.country-list');
+const countryInfo = document.querySelector('.country-info');
 
-refs.input.addEventListener('input', debounce(onSearch, DEBOUNCE_DELAY));
-
-function onSearch(e) {
-  const searchQuery = e.target.value.trim();
-
-  if (searchQuery.length > 0) {
-    fetchCountries(searchQuery)
-      .then(countries => {
-        const regex = new RegExp(searchQuery.split('').join('.*'), 'i');
-        const matchingCountries = countries.filter(country =>
-          regex.test(country.name.common)
-        );
-
-        if (matchingCountries.length >= MAX_COUNTRIES) {
-          Notify.info(
-            'Too many matches found. Please enter a more specific name.'
-          );
-          clearResults();
-        } else if (matchingCountries.length > 1) {
-          renderCountryFlags(matchingCountries);
-          clearInfo();
-        } else {
-          renderCountryCard(matchingCountries[0]);
-        }
-      })
-      .catch(error => {
-        Notify.failure('Oops, there is no country with that name');
-        clearResults();
-      });
-  } else {
-    clearResults();
-  }
-}
-
-function renderCountryFlags(countries) {
-  const flagsHtml = countries
-    .map(country => createCountryFlagHtml(country))
-    .join('');
-  refs.list.innerHTML = flagsHtml;
-}
-
-function createCountryFlagHtml(country) {
-  return `
-    <div class="country-flag">
-      <img src="${country.flags.svg}" alt="Flag of ${country.name.official}" width="20" height="20">
+const renderCountryList = countries => {
+  const html = countries
+    .map(
+      country => `
+    <div class="country-item">
+      <img src="${country.flags.svg}" alt="Flag of ${country.name.common}" width="20"> 
       <span>${country.name.common}</span>
     </div>
+  `
+    )
+    .join('');
+  countryList.innerHTML = html;
+};
+
+const renderCountryInfo = country => {
+  const { flags, name, capital, population, languages } = country;
+  countryInfo.innerHTML = `
+    <img src="${flags.svg}" alt="Flag of ${name.common}" width="400">
+    <h2>${name.common}</h2>
+    <p>Capital: ${capital[0]}</p>
+    <p>Population: ${population}</p>
+    <p>Languages: ${Object.values(languages).join(', ')}</p>
   `;
-}
+};
 
-function renderCountryCard(country) {
-  const cardHtml = createCountryCardHtml(country);
-  refs.list.innerHTML = cardHtml;
-  clearInfo();
-}
-
-function createCountryCardHtml(country) {
-  const languages = Object.values(country.languages).join(', ');
-
-  return `
-    <div class="country-card">
-      <img src="${country.flags.svg}" alt="Flag of ${country.name.official}" width="400">
-      <h2>${country.name.common}</h2>
-      <p><b>Capital:</b> ${country.capital[0]}</p>
-      <p><b>Population:</b> ${country.population}</p>
-      <p><b>Languages:</b> ${languages}</p>
-    </div>
-  `;
-}
-
-function clearResults() {
-  refs.list.innerHTML = '';
-  clearInfo();
-}
+const onInput = debounce(event => {
+  const searchTerm = event.target.value.trim();
+  if (!searchTerm) {
+    clearAll();
+    return;
+  }
+  fetchCountries(searchTerm)
+    .then(countries => {
+      if (countries.length > MAX_COUNTRIES) {
+        Notify.info(
+          'Too many matches found. Please enter a more specific name.'
+        );
+      } else if (countries.length > 1) {
+        renderCountryList(countries);
+        clearInfo();
+      } else {
+        renderCountryInfo(countries[0]);
+        clearList();
+      }
+    })
+    .catch(error => {
+      Notify.failure('Oops, there is no country with that name');
+      clearAll();
+    });
+}, DEBOUNCE_DELAY);
 
 function clearInfo() {
-  refs.info.innerHTML = '';
+  countryInfo.innerHTML = '';
 }
+function clearList() {
+  countryList.innerHTML = '';
+}
+
+function clearAll() {
+  clearInfo();
+  clearList();
+}
+
+searchBox.addEventListener('input', onInput);
