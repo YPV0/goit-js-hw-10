@@ -20,8 +20,9 @@ function onSearch(e) {
   if (searchQuery.length > 0) {
     fetchCountries(searchQuery)
       .then(countries => {
+        const regex = new RegExp(searchQuery.split('').join('.*'), 'i');
         const matchingCountries = countries.filter(country =>
-          country.name.common.toLowerCase().includes(searchQuery.toLowerCase())
+          regex.test(country.name.common)
         );
 
         if (matchingCountries.length >= MAX_COUNTRIES) {
